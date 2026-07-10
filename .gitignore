@@ -1,0 +1,26 @@
+# 忽略 PyTorch 导出的二进制权重模型文件
+*.pth
+**/dataset/best_model_*.pth
+
+# 忽略所有的 zip 压缩包
+*.zip
+
+# 忽略所有子目录下的大型原始文本数据集与分词文本
+**/dataset/*.txt
+**/dataset/*.clean.txt
+
+# 忽略本地生成的词表、词嵌入权重和可视化图片
+**/dataset/*.json
+**/dataset/*.npy
+**/dataset/*.png
+
+# 忽略训练好的 Word2Vec 模型文件及其权重缓存
+**/dataset/*.model
+**/dataset/word2vec.model*
+
+# 忽略 Python 运行产生的缓存文件夹
+__pycache__/
+**/__pycache__/
+
+# 忽略 PyCharm 的本地配置文件
+.idea/
