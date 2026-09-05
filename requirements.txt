@@ -1,0 +1,18 @@
+# NNProject Python Dependencies
+# 基于 THUCNews 的中文文本分类与深度学习系统依赖库
+
+# 深度学习与基础计算
+torch>=2.0.0
+numpy>=1.24.0
+
+# 中文分词与自然语言处理
+jieba>=0.42.0
+gensim>=4.3.0
+
+# 机器学习评估与可视化
+scikit-learn>=1.2.0
+matplotlib>=3.7.0
+
+# 实用工具
+tqdm>=4.65.0
+python-pptx>=0.6.21

@@ -243,15 +243,16 @@ if __name__ == "__main__":
     print(words)
     
     # 测试词表的构建
-    sample_train_file = r"/NN/dataset/cnews.val.txt"
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sample_train_file = os.path.join(base_dir, "dataset", "cnews.val.txt")
     if os.path.exists(sample_train_file):
         print("\n[测试] 尝试使用较小的验证集验证词表构建与 DataLoader 加载...")
         vocab = preprocessor.build_vocab(sample_train_file, min_freq=2)
         print("词表前 10 个词:", list(vocab.keys())[:10])
-        
+
         # 封装为 Dataset 和 DataLoader
         test_dataset = THUCNewsDataset(sample_train_file, preprocessor, is_train=False, vocab_path=None)
-        test_loader = DataLoader(test_dataset, batch_size=4, shuffle=True)
+        test_loader = DataLoader(test_dataset, batch_size=4, shuffle=True,pin_memory=True)
         
         print("\n[测试] 从 DataLoader 中读取一个 Batch 数据:")
         for x, y in test_loader:

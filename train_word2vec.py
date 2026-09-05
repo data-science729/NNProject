@@ -153,7 +153,8 @@ def plot_tsne_visualization(w2v_model, img_save_path):
     print(f"[B] t-SNE 可视化图片已成功保存至: {img_save_path}")
 
 def main():
-    dataset_dir = r"c:\Users\asus\PycharmProjects\NNProject\NN\dataset"
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    dataset_dir = os.path.join(base_dir, "dataset")
     train_clean_file = os.path.join(dataset_dir, "cnews.train.clean.txt")
     vocab_file = os.path.join(dataset_dir, "word_vocab.json")
     

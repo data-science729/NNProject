@@ -9,7 +9,8 @@ def main():
     print(f"Python 版本: {sys.version}")
     
     # 1. 检查数据集文件是否存在
-    dataset_dir = r"c:\Users\asus\PycharmProjects\NNProject\NN\dataset"
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    dataset_dir = os.path.join(base_dir, "dataset")
     files = ["cnews.train.txt", "cnews.val.txt", "cnews.test.txt", "cnews.vocab.txt"]
     
     print("\n--- 1. 数据集文件状态 ---")

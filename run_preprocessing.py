@@ -45,7 +45,8 @@ def preprocess_and_count(preprocessor, input_path, output_path, is_train=False):
     return word_counter
 
 def main():
-    dataset_dir = r"c:\Users\asus\PycharmProjects\NNProject\NN\dataset"
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    dataset_dir = os.path.join(base_dir, "dataset")
     train_raw = os.path.join(dataset_dir, "cnews.train.txt")
     val_raw = os.path.join(dataset_dir, "cnews.val.txt")
     test_raw = os.path.join(dataset_dir, "cnews.test.txt")

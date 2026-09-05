@@ -96,7 +96,8 @@ def main():
     print("=" * 60)
     
     # 1. 定义相关路径
-    dataset_dir = r"c:\Users\asus\PycharmProjects\NNProject\NN\dataset"
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    dataset_dir = os.path.join(base_dir, "dataset")
     train_clean = os.path.join(dataset_dir, "cnews.train.clean.txt")
     val_clean = os.path.join(dataset_dir, "cnews.val.clean.txt")
     test_clean = os.path.join(dataset_dir, "cnews.test.clean.txt")
