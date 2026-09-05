@@ -1,0 +1,439 @@
+# -*- coding: utf-8 -*-
+import subprocess
+import os
+
+def main():
+    latex_content = r"""\documentclass[UTF8,a4paper,11pt]{ctexart}
+
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{caption}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{tikz}
+\usepackage{fancyhdr}
+
+% 设置紧凑的页面边距，保证排版紧凑且极具学术感
+\geometry{left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
+\hypersetup{colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black}
+\captionsetup{font=small,labelsep=quad}
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.2em} % 紧凑段间距
+\renewcommand{\arraystretch}{1.15}
+
+% 隐藏页眉页脚（去掉页眉横线与文字），但保留底部正中页码
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\title{\heiti\Huge 基于预训练词向量与深度神经网络的\\中文新闻文本分类系统课程设计报告}
+\author{\large 第一小组\\
+\vspace{0.4cm}
+组长：刘宇翔 \quad 组员：王振 \quad 邸凯硕 \quad 王杨浩}
+\date{2026年7月11日}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+\newpage
+
+\thispagestyle{empty}
+\tableofcontents
+\newpage
+
+\section{项目背景与总体认识 (刘宇翔)}
+
+\subsection{项目背景}
+随着互联网与数字媒体的爆发式增长，海量的网络新闻文本数据源源不断地产生。如何对这些文本信息进行高效、精准的自动分类、整理与推荐，成为了自然语言处理（NLP）领域的经典课题。传统方法依赖人工标注或基于规则的匹配，耗时耗力且无法捕获词汇间的深层语义关联。
+
+本课程设计项目要求我们在特定深度学习框架下，设计并运行一套端到端的中文新闻文本分类流水线。系统选用清华大学公开的 \texttt{THUCNews} 新闻数据集子集，覆盖“体育、娱乐、家居、房产、教育、时尚、时政、游戏、科技、财经”共 10 个均衡类别，总计包含 65,000 篇新闻文章（训练集 50,000 篇，验证集 5,000 篇，测试集 10,000 篇）。
+
+\subsection{小组成员分工}
+为了高效推进项目的实施，第一小组进行了科学、严谨的任务分解与角色分配：
+\begin{table}[htbp]
+\centering
+\caption{第一小组任务分工明细表}
+\label{tab:division}
+\begin{tabular}{ccl}
+\toprule
+姓名 & 角色 & 负责模块与职责 \\
+\midrule
+\textbf{刘宇翔} & \textbf{组长} & 负责第一部分（数据清洗、分词、词典构建、DataLoader 封装）及整体项目把关 \\
+\textbf{王振}   & \textbf{组员} & 负责第二部分（Word2Vec CBOW 模型训练、对齐 Embedding 权重及降维分析） \\
+\textbf{邸凯硕} & \textbf{组员} & 负责第三部分（TextCNN 网络搭建、卷积核尺度优化、Dropout 调优） \\
+\textbf{王杨浩} & \textbf{组员} & 负责第三部分（BiLSTM-Attention 模型对比、注意力机制提取与性能评测） \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{系统总体设计流水线}
+中文新闻文本分类系统在设计上采用分层的流水线架构（Pipeline）。各层之间通过定义严谨的数据接口进行解耦，保证了多人在项目开发中的高度并行和连贯。系统数据流与处理流程如图 \ref{fig:flow} 所示：
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=1.3cm and 2.5cm,
+  box/.style={draw, rectangle, fill=blue!5, text width=8.5cm, align=center, rounded corners, minimum height=0.7cm, font=\small},
+  arrow/.style={thick, ->, >=stealth}
+]
+  \node[box] (raw) {原始中文数据集 (标签 + 长正文)};
+  \node[box, below of=raw, yshift=-0.2cm] (clean) {清洗分词数据集 (\texttt{dataset/cnews.train.clean.txt})};
+  \node[box, below of=clean, yshift=-0.2cm] (emb) {对齐权重矩阵 (\texttt{dataset/embedding\_matrix.npy})};
+  \node[box, below of=emb, yshift=-0.2cm] (model) {深度学习分类模型 (\texttt{TextCNN / BiLSTM-Attention})};
+  \node[box, below of=model, yshift=-0.2cm] (eval) {最终评测报告与混淆矩阵 (\texttt{Precision / Recall / F1})};
+
+  \draw[arrow] (raw) -- node[right, font=\footnotesize, xshift=0.1cm] {数据预处理与清洗 (刘宇翔)} (clean);
+  \draw[arrow] (clean) -- node[right, font=\footnotesize, xshift=0.1cm] {词嵌入训练与对齐 (王振)} (emb);
+  \draw[arrow] (emb) -- node[right, font=\footnotesize, xshift=0.1cm] {模型加载与优化开发 (邸凯硕、王杨浩)} (model);
+  \draw[arrow] (model) -- node[right, font=\footnotesize, xshift=0.1cm] {独立测试集评估与指标分析 (第一小组)} (eval);
+\end{tikzpicture}
+\caption{中文文本分类系统总体架构与数据流向}
+\label{fig:flow}
+\end{figure}
+
+\section{第一部分：数据基本清洗与文本预处理 (刘宇翔)}
+
+数据清洗与文本预处理是整个 NLP 系统的根基。本模块由组长全权开发，致力于为后续特征提取和网络训练建立标准、规范的数据基础。
+
+\subsection{保留文本编码与异常处理}
+在处理中文文本数据时，首要任务是保障文本编码的兼容性。THUCNews 数据集全部采用 \texttt{UTF-8} 编码形式。我们在读取文件时，显式指定 \texttt{encoding='utf-8'}，并在底层函数中增加了针对未知异常编码字符的 \texttt{ignore} 过滤容错机制，防止程序中途因为字符映射异常而崩溃。
+
+\subsection{两步式噪声清理逻辑与标点隔离设计}
+
+\subsubsection{“两步式”噪声清理逻辑}
+在预处理过程中，我们将数据清理分为明确的两个步骤：
+\begin{enumerate}
+    \item \textbf{第一步（移除 HTML 标签）}：利用正则表达式 \texttt{re.sub(r'<[\^{}>]+>', '', text)} 匹配并剔除整个网页标签结构。这一步可以干净地抹去如 \texttt{<p class='content'>} 或 \texttt{</a>} 这样的标签名和属性名，防止其内部的英文字符混入正文。如果直接执行下一步的字符过滤，标签内的英文名称（如 \texttt{class}）就会被错误地当做正文保留，从而污染文本。
+    \item \textbf{第二步（过滤字符噪声）}：在已去除 HTML 结构的纯文本上，使用字符白名单 \texttt{[^\textbackslash u4e00-\textbackslash u9fa5a-zA-Z0-9，。！？：、]} 进行正则匹配，仅保留汉字、英文字母、数字和核心中文标点，过滤掉其余各种乱码、特殊符号或控制字符等噪声。
+\end{enumerate}
+
+\subsubsection{标点符号作为“语义隔离墙”的设计亮点}
+在中文自然语言处理（NLP）中，\textbf{“在分词前保留标点，分词后过滤标点”}是非常必要且专业的标准操作。
+这其中的核心原因在于\textbf{防止分词器（Jieba）产生“粘连错误分词”}。
+
+中文句子之间没有天然的空格，标点符号起到了语义隔离墙的作用。如果在清洗时就过早过滤掉标点，会导致前一句的结尾词和后一句的开头词发生粘连，让分词器产生切分错误。例如：
+\begin{itemize}
+    \item \textbf{原始文本}：“他提出了\textbf{问题。解决}这个问题很简单。”
+    \item \textbf{若分词前直接删掉句号}：文本变成“他提出了问题解决这个问题很简单”，Jieba 误将其切分为 \texttt{['问题解决', '这个', ...]}，原意是“提出问题”和“解决问题”两个动作，却被强行粘连成了“问题解决”合成名词，丢失了动作特征。
+    \item \textbf{若清洗保留标点，分词后再过滤}：Jieba 会切分为 \texttt{['问题', '。', '解决', ...]}，再在停用词阶段过滤掉 \texttt{'。'}，从而完美保留了 \texttt{'问题'} 和 \texttt{'解决'} 两个独立的实词。
+\end{itemize}
+
+\subsection{中文分词原理与停用词过滤}
+
+\subsubsection{Jieba 分词原理}
+英文单词之间天然有空格分隔，而中文必须进行分词。本项目选用了流行的 \texttt{jieba} 分词工具，其底层融合了以下三大核心机制：
+\begin{enumerate}
+    \item \textbf{基于前缀词典构建有向无环图 (DAG)}：利用内置的 30 万词条前缀词典，扫描输入句子，生成所有可能成词的切分有向无环图。
+    \item \textbf{动态规划计算最大概率路径}：基于词频概率分布，采用动态规划算法计算出概率最大、最符合日常表达习惯的切分路径。
+    \item \textbf{隐马尔可夫模型 (HMM) 识别新词}：针对未登录词（如人名、网络新词），利用 HMM 及其 Viterbi 算法，通过汉字间的转移概率规律进行新词推测。
+\end{enumerate}
+
+\subsubsection{停用词过滤机制}
+我们导入了包含 751 个高频中文停用词的 \texttt{stopwords.txt} 文件。分词程序在分词的同时，过滤出所有不在停用词表内的有实际语义的“实词”，作为特征序列。如果不做过滤，会带来三个主要危害：
+\begin{itemize}
+    \item \textbf{污染词汇表}：像“的”、“了”、“在”等无实际分类意义的词会因为词频极高，霸占词表的前几名，白白浪费词表空间。
+    \item \textbf{干扰词向量的学习}：滑动窗口中如果包含大量无意义停用词，会导致学出来的词向量在空间中都向这些停用词靠拢，拉低语义表示的纯度。
+    \item \textbf{稀释神经网络的注意力}：导致 TextCNN 或 Attention 机制在特征提取时将权重错误地分配在噪声词上，最终降低分类准确率。
+\end{itemize}
+
+\subsection{词典构建与双占位符机制}
+对 50,000 条训练集的清洗分词序列进行词频统计，共捕获 364,311 个独立词汇。
+
+\subsubsection{双占位符的设计}
+我们在词表中手动塞入了两个特殊的占位符：
+\begin{itemize}
+    \item \textbf{\texttt{<PAD>} (ID 为 0)}：用于长度对齐。神经网络在 GPU 上是按 Batch 进行矩阵并行计算的，要求输入的 Tensor 必须是统一的形状。对于长度小于设定值的新闻，我们在尾部填充 ID \texttt{0} 补齐。
+    \item \textbf{\texttt{<UNK>} (ID 为 1)}：用于代表“未登录词”或“未知词”。在预处理查表时，一旦遇到测试集或实际预测中未曾收录的罕见词，就将其统一映射为 ID \texttt{1}。
+\end{itemize}
+
+\subsubsection{最小频数 \texttt{min\_freq} 的设置与 Zipf 定律}
+在构建词表时，我们设定了 \texttt{min\_freq = 5}，即过滤掉在整个训练集中出现总次数小于 5 次的低频噪音词。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.65\textwidth]{dataset/vis_vocab_zipf_coverage.png}
+\caption{词频与词汇排名分布 (Zipf 定律双对数图) 与 词汇累积覆盖率曲线}
+\label{fig:zipf}
+\end{figure}
+
+如图 \ref{fig:zipf} 所示，语料库的词频分布严格遵循 \textbf{Zipf 定律}（在双对数坐标系下呈一条斜率约为 -1 的直线），即少数高频词占据了语料库的绝大多数频数，而大量低频词（长尾词）仅出现极少数次。
+过滤掉这些小于 5 次的长尾词，一方面可以从 36 万词汇量中剔除大量错别字和罕见专有名词，避免特征稀释；另一方面，将词表最大容量限制为 10,000。当词表大小为 10,000 时，累积覆盖率已达到 \textbf{94.60\%}，这说明前 10,000 个词已足以表达整个语料库 94.6\% 的语义信息，在保证准确率的同时极大地控制了模型的参数量。
+
+\subsection{序列对齐与截断长度优化}
+在进行并行计算之前，必须将不同长度的文本序列对齐到统一的长度 \texttt{max\_len}。
+为了寻找最优的 \texttt{max\_len} 设定，我们统计了训练集文章分词后的长度分布，如图 \ref{fig:len_dist} 所示。
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.55\textwidth]{dataset/vis_length_distribution.png}
+\caption{训练集分词后序列长度分布直方图}
+\label{fig:len_dist}
+\end{figure}
+
+通过累计长度分布计算，我们发现能够覆盖 \textbf{95\%} 训练样本的句子最大长度为 \textbf{888}。因此，我们将 \texttt{max\_len} 设定为 888，既保留了长文章的完整语义，又避免了短文章的计算冗余与过度填充。
+
+\subsection{PyTorch Dataset 与 DataLoader 批处理机制}
+在代码中，我们定义了 \texttt{THUCNewsDataset} 类并继承自 \texttt{torch.utils.data.Dataset}，重写了以下三个魔术方法：
+\begin{enumerate}
+    \item \textbf{\texttt{\_\_init\_\_}}：在初始化时，读取数据文件，通过 \texttt{TextPreprocessor} 对文本进行清洗、分词、截断对齐，转化为长度为 888 的 ID 列表，并保存在内存中。
+    \item \textbf{\texttt{\_\_len\_\_}}：直接返回数据集的总样本数（训练集返回 50,000）。
+    \item \textbf{\texttt{\_\_getitem\_\_}}：接收索引 \texttt{idx}，从内存中取出对应的 ID 列表和标签，分别包装为 PyTorch 长整型张量，以 \texttt{(x, y)} 的元组形式返回。
+\end{enumerate}
+
+在实际训练时，我们使用 \texttt{DataLoader} 包装该数据集，并指定 \texttt{batch\_size = 128} 和 \texttt{shuffle = True}。\texttt{DataLoader} 会在后台开启多线程，随机抽取索引，自动将 128 条单条样本拼接为形状为 \texttt{[128, 888]} 的批次特征张量和 \texttt{[128]} 的标签张量，实现了从本地文件到 GPU 显卡的高效数据传输。
+
+\section{第二部分：Word2Vec 词向量表征学习 (王振)}
+
+\subsection{Word2Vec 原理与分布假说}
+传统的“独热编码（One-Hot）”存在维度灾难和语义孤立的致命缺点。由于所有的 One-Hot 向量在数学空间中均正交，模型无法感知“篮球”和“足球”其实比“篮球”与“股票”更相近。
+
+词嵌入（Word Embedding）旨在将词汇映射到一个低维、稠密的连续实数空间（本项目设为 100 维）。Word2Vec 的训练基于语言学中的分布假说：\textbf{“经常在相同上下文里出现的词，它们的语义也必定是相近的”}。
+
+\subsection{CBOW 架构与网络训练}
+我们采用了 Word2Vec 的 \textbf{CBOW (Continuous Bag of Words, 连续词袋)} 模型，其通过上下文词汇来预测中心词。相比于用中心词预测上下文的 Skip-gram，CBOW 具有更快的计算速度，并且对高频背景词的表现更为稳定，适合我们包含 50,000 篇新闻的大型语料库。
+
+我们调用 \texttt{gensim.models.Word2Vec} 进行训练，设定模型参数为：\texttt{vector\_size = 100}，滑动窗口大小 \texttt{window = 5}，最低词频 \texttt{min\_count = 5}，训练迭代 10 轮。
+训练完成后，模型成功学到了高质量的中文语义表达。在相似度联想测试中，模型表现优异，例如与“詹姆斯”最接近的词汇为“麦迪、科比、夺冠、季后赛”；与“股票”最接近的词汇为“个股、债券、股市、基金”。
+
+\subsection{对齐预训练 Embedding 权重矩阵}
+为了将训练出的词向量运用到下游神经网络中，我们必须将其与数据预处理阶段生成的 \texttt{word\_vocab.json} 词典进行对齐：
+\begin{itemize}
+    \item 我们构建一个大小为 \texttt{[10000, 100]} 的 Embedding 矩阵。
+    \item 遍历词表中 ID 从 0 到 9999 的所有词语。若该词在 Word2Vec 模型中，则将其 100 维向量填入矩阵对应的行。
+    \item 特殊占位符 \texttt{<PAD>} 强制设为全零向量，其余不存在于 Word2Vec 模型中的词则进行随机高斯分布初始化。
+    \item 最终生成的 \texttt{embedding\_matrix.npy} 数组将作为下游模型的嵌入层初始权重，在训练过程中，根据任务进行微调（Fine-tuning）。
+\end{itemize}
+
+\subsection{t-SNE 2D 降维聚类分析}
+为了直观验证词嵌入在几何空间中保留语义的能力，我们引入了 \texttt{t-SNE} 算法，对覆盖 10 个类别的代表性词汇进行了 2D 降维可视化投影，如图 \ref{fig:tsne} 所示。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.55\textwidth]{dataset/tsne_visualization.png}
+\caption{基于 t-SNE 的词向量 2D 降维聚类可视化投影图}
+\label{fig:tsne}
+\end{figure}
+
+从图 \ref{fig:tsne} 可以清晰地看出，来自相同类别的词汇在空间中显现出极其凝聚的物理聚类，形成十个独立的色块分区，直接从视觉层面印证了我们训练得到的分布式词向量的优秀语义表达能力。
+
+\section{第三部分：深度学习分类模型开发 (邸凯硕, 王杨浩)}
+
+\subsection{TextCNN 模型开发 (邸凯硕)}
+
+\subsubsection{经典 Kim Yoon 架构与维度变换}
+TextCNN 利用一维卷积在文本的时间序列维度提取局部滑动窗口特征（类似 N-gram 特征）。我们搭建的 TextCNN 网络模型包含以下核心层，数据流在网络内部的传输顺序、维度变化以及各层的物理角色如下：
+
+\begin{table}[htbp]
+\centering
+\caption{TextCNN 数据流张量维度变换与层物理角色}
+\label{tab:textcnn_dim}
+\begin{tabular}{lccl}
+\toprule
+层名称 & 输入维度 & 输出维度 & 提取特征与物理角色 \\
+\midrule
+1. 输入数据层 & \texttt{[Batch, 888]} & \texttt{[Batch, 888]} & 接收对齐的长文本词 ID 序列 \\
+2. 词嵌入层 & \texttt{[Batch, 888]} & \texttt{[Batch, 100, 888]} & 查表生成词向量并转置通道 \\
+3. 一维卷积层 & \texttt{[Batch, 100, 888]} & 三路 \texttt{[Batch, 256, 888-k+1]} & 滑动窗口提取 $k \in \{3,4,5\}$-gram 特征 \\
+4. 激活函数层 & \texttt{[Batch, 256, 888-k+1]} & 三路 \texttt{[Batch, 256, 888-k+1]} & ReLU 引入非线性关系 \\
+5. 时间最大池化层 & \texttt{[Batch, 256, 888-k+1]} & \texttt{[Batch, 768]} & 筛选最强局部信号并做三路特征拼接 \\
+6. Dropout 正则层 & \texttt{[Batch, 768]} & \texttt{[Batch, 768]} & 随机失活 50\% 节点以抑制过拟合 \\
+7. 全连接输出层 & \texttt{[Batch, 768]} & \texttt{[Batch, 10]} & 线性投影特征向量到 10 分类空间 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{卷积与填充设计决策}
+我们在 TextCNN 中使用的是\textbf{窄卷积（padding=0）}。不补零的核心用意在于：
+一是因为文本分类任务卷积层后连接的是全局最大池化，不需要保持输入输出序列长度的一致；
+二是窄卷积能够\textbf{避免引入两端的零填充噪声}，确保卷积核提取的是纯粹、真实的局部语义特征。
+
+卷积核大小选择为 3, 4, 5，分别对应 Trigram, 4-gram, 5-gram，能用不同焦距的“眼睛”提取不同长度的词组特征。若改用 10 或 20 的超大窗口，首先会导致特征稀释（混入大量无意义停用词，拉低敏感度），其次会使参数量暴增导致严重过拟合，并违背了 CNN 捕捉“局部相关性”的设计初衷。
+
+\subsubsection{激活函数与 Dropout 机制}
+* \textbf{激活函数 (ReLU)}：激活函数的根本作用是为神经网络引入非线性建模能力。如果不加激活函数，模型在数学上仅是一次复合线性变换，网络将退化为线性分类器（如多元逻辑回归），无法建模复杂的非线性上下文，分类效果会急剧下降。我们选用 ReLU 是因为其在正区间导数恒为 1，能彻底解决 Sigmoid/Tanh 的梯度消失问题，使模型极快收敛，且其阈值计算在底层硬件上执行极快，能带来神经元的稀疏激活以抑制过拟合。
+* \textbf{Dropout (随机失活)}：设置丢弃率为 0.5。其原理一是抑制神经元的共适应性，强迫每个神经元学习独立的鲁棒特征；二是在迭代中隐式进行模型集成，相当于在测试时集成了 $2^H$ 个子网络，显著降低了泛化误差。
+
+\subsection{BiLSTM-Attention 模型开发 (王杨浩)}
+为了捕获长距离的序列依赖关系，王杨浩同学负责搭建了双向 LSTM 并引入自注意力机制的网络。
+
+\subsubsection{BiLSTM 双向时序建模}
+使用双向长短期记忆网络（BiLSTM），前向 LSTM 沿正向扫描输入序列，捕获从前到后的上下文信息；反向 LSTM 沿逆向扫描序列，捕获逆向的上下文关系。隐藏状态维度设为 128，双向拼接后输出形状为 \texttt{[Batch\_size, 888, 256]}。这能有效解决普通 RNN 梯度消失和长距离依赖衰减的问题。
+
+\subsubsection{Self-Attention (自注意力机制)}
+由于文本截断长度达到了 888，长文本的隐藏状态在 LSTM 传递到末尾时仍会有信息遗忘。我们引入自注意力层，其结构如下：
+\begin{align}
+    u_t &= \tanh(W_w h_t + b_w) \\
+    \alpha_t &= \frac{\exp(u_t^T u_w)}{\sum_i \exp(u_i^T u_w)} \\
+    s &= \sum_t \alpha_t h_t
+\end{align}
+其中 $u_w$ 是一个可学习的上下文向量。通过计算每个时刻隐藏状态 $h_t$ 与 $u_w$ 的相似度，经过 Softmax 得到注意力权重分数 $\alpha_t$，对所有时刻的状态进行加权求和，凝聚成整句的特征表示 $s$。
+这使得模型能够自主地“聚焦”于句子中对分类有关键贡献的代表性词汇，而忽略无意义的填充。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.55\textwidth]{dataset/vis_attention_heatmaps.png}
+\caption{BiLSTM-Attention 模型在句子级别的注意力权重热力图展示}
+\label{fig:attn}
+\end{figure}
+
+如图 \ref{fig:attn} 所示，热力图直观展示了注意力权重的分布，颜色越深代表注意力权重越高。模型能够准确且强烈地锁定如“基金”、“股票”等与财经类别强相关的关键词，证明了 Attention 机制的物理有效性。
+
+\section{第四部分：系统测试、模型评估与对比分析 (第一小组)}
+
+我们在包含 10,000 篇新闻的独立测试集上对模型进行测试评估，计算全指标测试数据。
+
+\subsection{多模型分类准确率与效率对比}
+两款模型在独立测试集上的分类准确率与运行效率对比见表 \ref{tab:compare}。
+
+\begin{table}[htbp]
+\centering
+\caption{TextCNN 与 BiLSTM-Attention 在测试集上的对比}
+\label{tab:compare}
+\begin{tabular}{lccc}
+\toprule
+模型名称 & 训练耗时 (秒/每轮) & 测试集总准确率 (Accuracy) & 测试集平均损失 (Loss) \\
+\midrule
+TextCNN & \textbf{2.8s} & \textbf{96.60\%} & \textbf{0.1197} \\
+BiLSTM-Attention & 12.0s & 94.60\% & 0.1669 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.5\textwidth]{dataset/vis_model_comparison.png}
+\caption{TextCNN 与 BiLSTM-Attention 准确率与耗时对比图}
+\label{fig:model_comp}
+\end{figure}
+
+如图 \ref{fig:model_comp} 所示，我们可以得出两个核心结论：
+\begin{enumerate}
+    \item \textbf{TextCNN 运行效率明显优于 BiLSTM-Attention}：TextCNN 训练耗时（每轮 2.8s）仅为 BiLSTM-Attention（每轮 12.0s）的 23.3\%。这是因为卷积操作在时间维度上是可以完全并行计算的，而 LSTM 具有串行递推的时序依赖，GPU 无法进行完全并行。
+    \item \textbf{TextCNN 分类准确率更高 (96.60\% > 94.60\%)}：这表明在均衡分布的新闻主题分类任务中，局部核心短语特征就能够提供足够强烈的分类判别性，而 LSTM 试图捕获的极长序列语义在此任务中并非决定性因素，反而可能引入长时依赖噪声。
+\end{enumerate}
+
+\subsection{训练过程收敛性分析}
+图 \ref{fig:curves} 展示了两模型在 5 轮 Epoch 的训练与验证过程中的 Loss 和 Accuracy 变化曲线。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.65\textwidth]{dataset/vis_training_curves.png}
+\caption{两模型在训练集与验证集上的 Loss 和 Accuracy 变化曲线}
+\label{fig:curves}
+\end{figure}
+
+两模型均收敛良好，未发生过拟合。在第 2 轮之后，验证集准确率就已进入平台期，这充分印证了我们预训练 Word2Vec 词向量的优秀品质，使神经网络能够快速定位最优参数空间。
+
+\subsection{TextCNN 详细分类指标分析}
+以分类表现最好的 TextCNN 模型为例，在测试集上的分类细节如表 \ref{tab:metrics} 所示。
+
+\begin{table}[htbp]
+\centering
+\caption{TextCNN 测试集分类细节指标报告}
+\label{tab:metrics}
+\begin{tabular}{lcccc}
+\toprule
+中文类别 & 精确率 (Precision) & 召回率 (Recall) & F1-Score (综合指标) & 测试样本数 \\
+\midrule
+体育 & 99.90\% & 99.60\% & 99.75\% & 1000 \\
+娱乐 & 99.19\% & 98.40\% & 98.80\% & 1000 \\
+时尚 & 97.50\% & 97.60\% & 97.55\% & 1000 \\
+财经 & 94.77\% & 99.70\% & 97.17\% & 1000 \\
+游戏 & 94.01\% & 98.80\% & 96.34\% & 1000 \\
+科技 & 94.68\% & 97.90\% & 96.26\% & 1000 \\
+时政 & 94.55\% & 97.10\% & 95.81\% & 1000 \\
+房产 & 97.29\% & 93.30\% & 95.25\% & 1000 \\
+教育 & 96.95\% & 92.20\% & 94.52\% & 1000 \\
+家居 & 97.65\% & 91.40\% & 94.42\% & 1000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.55\textwidth]{dataset/vis_confusion_matrix_textcnn.png}
+\caption{TextCNN 在独立测试集上的混淆矩阵图}
+\label{fig:confusion}
+\end{figure}
+
+从图 \ref{fig:confusion} 的混淆矩阵可以发现，大部分错误分类集中在家居、房产和财经这三个类别之间。例如有 37 篇房产新闻被错判为财经，有 25 篇家居新闻被错判为时尚，有 21 篇家居新闻被错判为房产。
+这在现实语义上非常合理，因为房产新闻中频繁讨论利率、资金、股市投资等话题，这些特征词与财经新闻具有天然的语义交叉；而家居和房产新闻中也经常讨论装潢设计、软装材料以及小区的户型规划。这种混淆正是词嵌入在多维语义空间上建立的关联性的真实体现。
+
+\section{第五部分：端到端预测代码接口与系统部署 (刘宇翔)}
+为了向实际应用交付一个完整的实用预测系统，我们设计并实现了一个统一的预测接口，将数据预处理、词向量查表和模型前向推理有机串联。该接口的代码实现如下：
+
+\begin{algorithm}[H]
+\caption{中文文本分类系统端到端统一预测接口程序}
+\label{alg:predict}
+\begin{algorithmic}[1]
+\State \textbf{Input:} 原始中文新闻文本 $T_{raw}$，预处理器 $P$，神经网络模型 $M$，类别对照表 $L$
+\State \textbf{Output:} 预测出的新闻类别名称 $C_{pred}$
+\Function{PredictCategory}{$T_{raw}, P, M, L$}
+    \State $T_{clean} \gets P.\text{clean\_text}(T_{raw})$ \Comment{第一步：HTML正则过滤及标点保留}
+    \State $W \gets P.\text{segment\_text}(T_{clean})$ \Comment{第二步：Jieba分词及停用词剔除}
+    \State $I \gets [P.\text{word2id}.\text{get}(w, 1) \text{ for } w \in W]$ \Comment{第三步：查表生成ID，生词设为1(<UNK>)}
+    \State $I \gets \text{PadOrTruncate}(I, 888)$ \Comment{第四步：序列填充对齐到888维}
+    \State $X \gets \text{torch.tensor}([I]).\text{cuda}()$ \Comment{第五步：转换为 PyTorch 批次张量并上传 GPU}
+    \State $logits \gets M(X)$ \Comment{第六步：模型前向计算分类得分}
+    \State $pred\_id \gets \text{torch.argmax}(logits, \text{dim}=1).\text{item}()$
+    \State \Return $L[pred\_id]$ \Comment{第七步：对照数字返回对应的中文类别名称}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+这一端到端控制流封装极大地提升了系统的易用性，使得本中文文本分类系统不仅能用于离线的数据集评测，更可以直接作为后端预测 API 嵌入到真实的新闻阅读器、搜索引擎或自动归档服务中。
+
+\section{总结与分工}
+
+通过本次综合课程实习项目，第一小组全员紧密配合，成功设计、开发并评估了一套完整的中文文本分类 Pipeline。我们在 10 分类的中文语料库上取得了高达 \textbf{96.60\%} 的分类准确率。
+
+在课程设计中，小组成员的任务分工如下：
+\begin{itemize}
+    \item \textbf{刘宇翔}：作为组长，负责项目的整体规划与统筹，独立设计并实现了端到端的数据基本清洗、分词、词典构建及 DataLoader 封装；开发了端到端预测代码接口并完成系统部署。
+    \item \textbf{王振}：负责 Word2Vec CBOW 模型的训练、词嵌入权重对齐，以及使用 t-SNE 等方法对高维词嵌入进行降维分析与可视化，提升模型的可解释性。
+    \item \textbf{邸凯硕}：负责 TextCNN 分类网络的设计与搭建，主导了卷积核尺度优化、池化操作与 Dropout 参数调优，实现了对时序局部特征的精准提取。
+    \item \textbf{王杨浩}：负责对比模型 BiLSTM-Attention 的开发、训练与注意力权重的可视化展示，分析了注意力机制对长文本分类的优化效果，并完成了独立测试集的综合指标评估。
+\end{itemize}
+
+本项目直接论证了“预训练特征表征 + 神经网络微调”范式在中文 NLP 主题分类任务中的强大实力。
+
+\end{document}
+"""
+    with open("第一小组综合课程设计实习报告.tex", 'w', encoding='utf-8') as f:
+        f.write(latex_content)
+    print("[Report Compiler] 成功写入第一小组综合课程设计实习报告.tex")
+
+    print("[Report Compiler] 开始运行 xelatex 进行第一次编译...")
+    result1 = subprocess.run(["xelatex", "-interaction=nonstopmode", "第一小组综合课程设计实习报告.tex"], 
+                             capture_output=True, text=True, encoding='utf-8', errors='ignore')
+    
+    print("[Report Compiler] 开始运行 xelatex 进行第二次编译（生成目录和交叉引用）...")
+    result2 = subprocess.run(["xelatex", "-interaction=nonstopmode", "第一小组综合课程设计实习报告.tex"], 
+                             capture_output=True, text=True, encoding='utf-8', errors='ignore')
+    
+    if os.path.exists("第一小组综合课程设计实习报告.pdf"):
+        print("[Report Compiler] 成功！已生成 pdf 文件：第一小组综合课程设计实习报告.pdf")
+        # 获取页数信息
+        log_path = "第一小组综合课程设计实习报告.log"
+        if os.path.exists(log_path):
+            with open(log_path, 'r', encoding='utf-8', errors='ignore') as log_f:
+                for line in log_f:
+                    if "Output written on" in line and "pages" in line:
+                        print(f"[Report Compiler] 编译输出页数日志: {line.strip()}")
+    else:
+        print("[Report Compiler] 编译失败！")
+        print("首次编译 stdout 结尾:")
+        print("\n".join(result1.stdout.split('\n')[-30:]))
+        print("首次编译 stderr 结尾:")
+        print(result1.stderr)
+        
+if __name__ == "__main__":
+    main()
