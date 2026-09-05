@@ -6,9 +6,9 @@
 [![Model](https://img.shields.io/badge/Models-TextCNN%20%7C%20BiLSTM--Attention-orange.svg)]()
 [![Dataset](https://img.shields.io/badge/Dataset-THUCNews-success.svg)]()
 
-本项目基于清华大学公开的 **THUCNews** 中文新闻数据集子集（涵盖体育、财经、房产、家居、教育、科技、时尚、时政、游戏、娱乐共 10 个类别），设计并实现了一个工业级、模块化、高准确率的端到端中文文本自动分类系统。
+本项目基于清华大学公开的 **THUCNews** 中文新闻数据集子集（涵盖体育、财经、房产、家居、教育、科技、时尚、时政、游戏、娱乐共 10 个类别），设计并实现了一个端到端中文文本自动分类系统。
 
-系统全面贯穿了 **自然语言预处理（Jieba 分词 + 停用词过滤）**、**分布式词向量表征（Word2Vec Skip-Gram + t-SNE 2D 聚类降维）** 与 **深度神经网络分类器（TextCNN 卷积神经网络 & BiLSTM-Attention 双向循环长短期记忆注意力网络）**。在 10,000 条全量独立测试集上，模型达到了 **96.60%** 的顶级综合分类准确率。
+系统全面贯穿了 **自然语言预处理（Jieba 分词 + 停用词过滤）**、**分布式词向量表征（Word2Vec Skip-Gram + t-SNE 2D 聚类降维）** 与 **深度神经网络分类器（TextCNN 卷积神经网络 & BiLSTM-Attention 双向循环长短期记忆注意力网络）**。在 10,000 条全量独立测试集上，模型达到了 **96.60%** 的综合分类准确率。
 
 ---
 
