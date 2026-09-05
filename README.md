@@ -109,18 +109,6 @@ python visualize.py
 ```
 *一键批量生成混淆矩阵热力图、分门类 F1-Score 对比柱状图、训练收敛曲线及注意力热图。*
 
----
-
-## 📖 实验报告与技术文档
-
-所有详尽的学术报告、技术原理解析与答辩材料均统一归档在 [docs/](file:///c:/Users/asus/PycharmProjects/NNProject/docs/) 目录下：
-- **正式结题实习报告**：[第一小组综合课程设计实习报告.pdf](file:///c:/Users/asus/PycharmProjects/NNProject/docs/第一小组综合课程设计实习报告.pdf)
-- **开发与实验过程笔记**：[docs/综合课程设计(Cnews文本分类).md](file:///c:/Users/asus/PycharmProjects/NNProject/docs/综合课程设计(Cnews文本分类).md)
-- **答辩演示幻灯片**：[docs/李笃光--综合课程设计一题目.pptx](file:///c:/Users/asus/PycharmProjects/NNProject/docs/李笃光--综合课程设计一题目.pptx)
-- **TF-IDF 停用词分析报告**：[docs/tfidf_stopwords_report.md](file:///c:/Users/asus/PycharmProjects/NNProject/docs/tfidf_stopwords_report.md)
-
----
-
 ## 🛠️ 技术栈与依赖
 - **Python 3.10+**
 - **PyTorch 2.0+**（神经网络搭建、反向传播与 GPU 加速）
@@ -128,3 +116,11 @@ python visualize.py
 - **Gensim**（Word2Vec 词向量训练）
 - **Scikit-learn**（t-SNE 降维、分类评价指标及混淆矩阵）
 - **Matplotlib / Seaborn**（训练曲线与可视化图表渲染）
+
+---
+
+
+
+---
+
+
