@@ -2,8 +2,8 @@
 
 > **项目名称**：`NNProject`（基于 THUCNews 的新闻文本分类与深度学习系统）  
 > **本地路径**：`C:\Users\asus\PycharmProjects\NNProject`  
-> **GitHub 用户名**：`Liu`  
-> **目标云端地址**：`https://github.com/Liu/NNProject.git`  
+> **GitHub 账户名（Handle）**：`data-science729`（昵称/显示名为 `Liu`）  
+> **目标云端地址**：`https://github.com/data-science729/NNProject.git`  
 > **适合人群**：已完成本地开发，想把当前项目完整、规范、安全地推送到 GitHub 的同学。你可以一边看这篇文档，一边在 PyCharm 终端里“慢慢弄”。
 
 ---
@@ -66,7 +66,7 @@ git config user.email
 
 请打开浏览器，按以下步骤在 GitHub 上建一个空仓库：
 
-1. 打开 [https://github.com](https://github.com) 并登录你的账号 **`Liu`**。
+1. 打开 [https://github.com](https://github.com) 并确认已登录你的 GitHub 账号 **`data-science729`**（显示名称为 `Liu`）。
 2. 点击网页右上角的 **`+`** 号，选择 **`New repository`**（新建仓库）。
 3. 填写仓库信息：
    - **Repository name**（仓库名）：必须填 **`NNProject`**（大小写建议完全一致）。
@@ -82,7 +82,7 @@ git config user.email
    > 因为你的本地 `NNProject` 已经有了 `README.md` 和 `.gitignore` 文件，并且已经有了提交记录。如果你在网页端勾选了这些，GitHub 会自动在线生成一个新的不同提交，导致**两端历史冲突**，初学者会遇到复杂的 merge/rebase 报错。保持一个**完全干净的空仓库**是最省心的！
 5. 点击最下方的绿色按钮 **`Create repository`**。
 6. 创建成功后，GitHub 页面会显示你的专属仓库链接：
-   `https://github.com/Liu/NNProject.git`
+   `https://github.com/data-science729/NNProject.git`
 
 ---
 
@@ -90,7 +90,7 @@ git config user.email
 
 本地项目需要知道该把代码推送到 GitHub 的哪个具体网址。
 
-之前本地仓库的地址里写的是占位符 `你的用户名`，**我们刚才已经帮你执行命令校准为了 `Liu`**。  
+之前本地仓库的地址里写的是占位符，**我们刚才已经帮你执行命令校准为了真实仓库地址**。  
 你可以亲自在终端输入以下命令验证：
 
 ```bash
@@ -99,13 +99,13 @@ git remote -v
 
 * **预期正确输出**：
   ```text
-  origin  https://github.com/Liu/NNProject.git (fetch)
-  origin  https://github.com/Liu/NNProject.git (push)
+  origin  https://github.com/data-science729/NNProject.git (fetch)
+  origin  https://github.com/data-science729/NNProject.git (push)
   ```
 
 > 💡 **备忘知识**：如果以后换了仓库名字，只需敲这行命令就能随时更改：
 > ```bash
-> git remote set-url origin https://github.com/Liu/NNProject.git
+> git remote set-url origin https://github.com/data-science729/NNProject.git
 > ```
 
 ---
@@ -231,13 +231,13 @@ git push -u origin main
 Enumerating objects: ...
 Counting objects: 100% ...
 Writing objects: 100% ...
-To https://github.com/Liu/NNProject.git
+To https://github.com/data-science729/NNProject.git
  * [new branch]      main -> main
 branch 'main' set up to track 'origin/main'.
 ```
 
 此时，打开浏览器访问你的项目主页：
-👉 **`https://github.com/Liu/NNProject`**
+👉 **`https://github.com/data-science729/NNProject`**
 
 刷新页面，你会看到：
 1. 所有的源码（`NN/`、`AtoC/src/`）、分析脚本和报告都整整齐齐地陈列在上面；
@@ -312,4 +312,4 @@ git push                       # 4. 同步到 GitHub
 | **查看提交历史** | `git log --oneline` | 单行简短查看版本时间轴 |
 | **查看具体代码改动** | `git diff` | 查看未暂存的修改增删细节 |
 | **放弃工作区某文件修改** | `git restore <文件名>` | 瞬间还原文件（后悔药） |
-| **查看关联的远程仓库** | `git remote -v` | 确认是否关联到了 `Liu/NNProject` |
+| **查看关联的远程仓库** | `git remote -v` | 确认是否关联到了 `data-science729/NNProject` |
